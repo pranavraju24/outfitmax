@@ -1,11 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Pin the project root so Turbopack doesn't walk up to a stray lockfile in a
-  // parent folder (e.g. ~/package-lock.json) and mis-serve client assets.
+  // Emit a self-contained ".next/standalone" build (minimal server + only the
+  // node_modules actually used) for a small Docker image.
+  output: "standalone",
+  // Pin the project root so Turbopack (dev) and the file tracer (build) don't
+  // walk up to a stray lockfile in a parent folder (e.g. ~/package-lock.json).
   turbopack: {
     root: process.cwd(),
   },
+  outputFileTracingRoot: process.cwd(),
   experimental: {
     serverActions: {
       // Allow uploading several clothing photos in one submission. The default

@@ -102,6 +102,18 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Run with Docker
+
+The app ships a multi-stage `Dockerfile` (Next.js standalone output) and a
+`docker-compose.yml`. With your env values in `.env.local`:
+
+```bash
+docker compose --env-file .env.local up --build
+```
+
+Supabase itself runs separately (your hosted project, or `npx supabase start`
+for a local stack).
+
 ## Scripts
 
 | Command | Description |
@@ -110,6 +122,20 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | Run ESLint |
+| `npm run typecheck` | Type-check with `tsc` |
+| `npm test` | Run unit tests (Vitest) |
+| `npm run test:integration` | Run RLS integration tests (needs local Supabase) |
+
+## Testing
+
+- **Unit tests** (`npm test`) cover the AI layer: schema-validated output,
+  retry/backoff on transient errors, and the swappable-provider factory. The
+  Gemini client is mocked, so they're fast and need no network.
+- **Integration tests** (`npm run test:integration`) run against a local
+  Supabase (`npx supabase start`) and prove Row-Level Security keeps each user's
+  wardrobe private.
+- **CI** (GitHub Actions) runs lint, typecheck, unit tests, and a production
+  build on every push and pull request.
 
 ## Project structure
 
