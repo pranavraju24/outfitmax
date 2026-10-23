@@ -17,6 +17,7 @@ import type {
   SuggestOutfitsInput,
 } from "./types";
 import { buildShopLinks } from "./shop";
+import { logger } from "@/lib/logger";
 
 // The model we use. "flash" = fast + free-tier friendly, and it can see images.
 // (Google retired gemini-2.5-flash for new accounts; 3.6-flash is the current one.)
@@ -177,11 +178,15 @@ export class GeminiStylist implements AIStylist {
   private async generateWithRetry(
     request: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
     maxAttempts = 3
-  ): Promise<Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>>> {
+  ): Promise<{
+    response: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>>;
+    attempts: number;
+  }> {
     let lastErr: unknown;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        return await this.ai.models.generateContent(request);
+        const response = await this.ai.models.generateContent(request);
+        return { response, attempts: attempt };
       } catch (err) {
         lastErr = err;
         // Not a temporary error, or we're out of tries → stop looping.
@@ -198,6 +203,62 @@ export class GeminiStylist implements AIStylist {
       );
     }
     throw lastErr;
+  }
+
+  // Runs a Gemini request, parses its JSON response, and logs a structured event
+  // (provider, model, latency, retry count, validation outcome) for every call.
+  // This is our observability hook — the numbers here power dashboards/metrics.
+  private async runJson(
+    operation: string,
+    request: Parameters<GoogleGenAI["models"]["generateContent"]>[0]
+  ): Promise<unknown> {
+    const startedAt = Date.now();
+    let attempts = 0;
+    try {
+      const result = await this.generateWithRetry(request);
+      attempts = result.attempts;
+
+      const text = result.response.text;
+      if (!text) {
+        throw new Error("Gemini returned an empty response.");
+      }
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new Error("Gemini returned invalid JSON.");
+      }
+
+      logger.info(
+        {
+          provider: "gemini",
+          model: MODEL,
+          operation,
+          latencyMs: Date.now() - startedAt,
+          attempts,
+          retries: attempts - 1,
+          validationPassed: true,
+        },
+        "ai_call"
+      );
+      return parsed;
+    } catch (err) {
+      logger.warn(
+        {
+          provider: "gemini",
+          model: MODEL,
+          operation,
+          latencyMs: Date.now() - startedAt,
+          attempts,
+          retries: Math.max(attempts - 1, 0),
+          validationPassed: false,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "ai_call_failed"
+      );
+      throw err;
+    }
   }
 
   async analyzeOutfit(input: AnalyzeInput): Promise<OutfitFeedback> {
@@ -221,9 +282,8 @@ export class GeminiStylist implements AIStylist {
       })),
     ];
 
-    // Actually call Gemini — but through our retry wrapper so a temporary
-    // "server busy" blip doesn't bubble up to the user as a hard failure.
-    const response = await this.generateWithRetry({
+    // Call Gemini through runJson (retry + parse + structured logging).
+    const raw = (await this.runJson("analyzeOutfit", {
       model: MODEL,
       contents: [{ role: "user", parts }],
       config: {
@@ -231,20 +291,7 @@ export class GeminiStylist implements AIStylist {
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
       },
-    });
-
-    // `response.text` is the model's answer as a JSON string; parse it to an object.
-    const text = response.text;
-    if (!text) {
-      throw new Error("Gemini returned an empty response.");
-    }
-
-    let raw: RawFeedback;
-    try {
-      raw = JSON.parse(text) as RawFeedback;
-    } catch {
-      throw new Error("Gemini returned invalid JSON.");
-    }
+    })) as RawFeedback;
 
     // Attach shop links to each suggestion (this is our own code, not the AI's).
     return {
@@ -262,7 +309,7 @@ export class GeminiStylist implements AIStylist {
   }
 
   async tagGarment(image: ImageInput): Promise<GarmentTags> {
-    const response = await this.generateWithRetry({
+    const raw = (await this.runJson("tagGarment", {
       model: MODEL,
       contents: [
         {
@@ -278,20 +325,10 @@ export class GeminiStylist implements AIStylist {
         responseMimeType: "application/json",
         responseSchema: TAG_SCHEMA,
       },
-    });
+    })) as GarmentTags;
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("Gemini returned an empty response.");
-    }
-
-    try {
-      const raw = JSON.parse(text) as GarmentTags;
-      // Make sure tags is always an array, even if the model omitted it.
-      return { ...raw, tags: raw.tags ?? [] };
-    } catch {
-      throw new Error("Gemini returned invalid JSON while tagging the garment.");
-    }
+    // Make sure tags is always an array, even if the model omitted it.
+    return { ...raw, tags: raw.tags ?? [] };
   }
 
   async suggestOutfits(input: SuggestOutfitsInput): Promise<OutfitIdea[]> {
@@ -312,7 +349,7 @@ export class GeminiStylist implements AIStylist {
       occasion?.trim() ? `Occasion/context: ${occasion.trim()}` : "No specific occasion."
     }`;
 
-    const response = await this.generateWithRetry({
+    const raw = (await this.runJson("suggestOutfits", {
       model: MODEL,
       contents: [{ role: "user", parts: [{ text: promptText }] }],
       config: {
@@ -320,19 +357,7 @@ export class GeminiStylist implements AIStylist {
         responseMimeType: "application/json",
         responseSchema: OUTFITS_SCHEMA,
       },
-    });
-
-    const text = response.text;
-    if (!text) {
-      throw new Error("Gemini returned an empty response.");
-    }
-
-    let raw: OutfitIdea[];
-    try {
-      raw = JSON.parse(text) as OutfitIdea[];
-    } catch {
-      throw new Error("Gemini returned invalid JSON while suggesting outfits.");
-    }
+    })) as OutfitIdea[];
 
     // Keep only valid item numbers (1..N) so a stray index can't crash the UI.
     return (raw ?? []).map((o) => ({
