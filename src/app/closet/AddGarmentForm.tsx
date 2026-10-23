@@ -22,10 +22,10 @@ export default function AddGarmentForm() {
       className="rounded-2xl border-2 border-dashed border-[#2b2420]/25 p-8 text-center"
     >
       <label htmlFor="image" className="block text-xl font-semibold">
-        Add a clothing photo
+        Add clothing photos
       </label>
       <p className="mt-2 text-sm text-gray-500">
-        Gemini will identify it and file it into your closet automatically.
+        Pick one or several — Gemini tags each and files them into your closet.
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-4">
@@ -34,6 +34,7 @@ export default function AddGarmentForm() {
           name="image"
           type="file"
           accept="image/*"
+          multiple
           required
           className="block w-full max-w-xs text-base file:mr-4 file:rounded-full file:border-0 file:bg-black file:px-5 file:py-2.5 file:text-sm file:font-medium file:text-white"
         />
@@ -48,7 +49,10 @@ export default function AddGarmentForm() {
 
       {state?.error && <p className="mt-4 text-base text-red-600">{state.error}</p>}
       {state?.success && (
-        <p className="mt-4 text-base text-green-700">Added to your closet!</p>
+        <p className="mt-4 text-base text-green-700">
+          Added {state.added} item{state.added === 1 ? "" : "s"} to your closet!
+          {state.note ? ` (${state.note})` : ""}
+        </p>
       )}
     </form>
   );

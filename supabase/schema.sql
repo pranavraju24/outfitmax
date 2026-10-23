@@ -70,3 +70,35 @@ create policy "Users can delete their own garments"
 grant usage on schema public to authenticated, service_role;
 grant all privileges on public.garments to service_role;
 grant select, insert, update, delete on public.garments to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Table: profiles  (one row per user — extra details beyond auth's email)
+-- The id IS the auth user's id, so there's exactly one profile per account.
+-- ---------------------------------------------------------------------------
+create table if not exists public.profiles (
+  id          uuid primary key references auth.users (id) on delete cascade,
+  full_name   text,
+  phone       text,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+drop policy if exists "Users can view their own profile" on public.profiles;
+create policy "Users can view their own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+drop policy if exists "Users can insert their own profile" on public.profiles;
+create policy "Users can insert their own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+drop policy if exists "Users can update their own profile" on public.profiles;
+create policy "Users can update their own profile"
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+grant all privileges on public.profiles to service_role;
+grant select, insert, update on public.profiles to authenticated;

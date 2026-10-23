@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getUser } from "@/lib/auth/dal";
-import { signOut } from "@/app/login/actions";
 
 // A server component shown on every page (added in layout.tsx). It reads the
-// current user and shows either a "Log in" link or the user's email + Log out.
+// current user and shows either a "Log in" link (logged out) or a "Profile"
+// button (logged in, which links to /profile where Log out lives).
 export default async function Header() {
   const user = await getUser();
 
@@ -26,13 +26,12 @@ export default async function Header() {
               <Link href="/outfits" className="hover:underline">
                 Outfit ideas
               </Link>
-              <span className="hidden text-gray-500 sm:inline">{user.email}</span>
-              {/* Logging out is a mutation, so it's a Server Action in a form. */}
-              <form action={signOut}>
-                <button className="rounded-md border border-gray-300 px-3 py-1 hover:bg-gray-50">
-                  Log out
-                </button>
-              </form>
+              <Link
+                href="/profile"
+                className="rounded-full bg-[#E86A45] px-4 py-1.5 font-medium text-white transition hover:bg-[#d65b38]"
+              >
+                Profile
+              </Link>
             </>
           ) : (
             <Link
