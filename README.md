@@ -36,19 +36,67 @@ The AI layer sits behind a provider-agnostic `AIStylist` interface
 (`src/lib/ai/`), so the underlying model can be swapped without touching the
 rest of the app.
 
-## How it works
+## Architecture
 
-```
-Browser ──▶ Server (Next.js route handlers / server actions)
-                 │  (holds secret keys — never exposed to the browser)
-                 ├─▶ Google Gemini   → image analysis, tagging, outfit ideas
-                 └─▶ Supabase        → auth, Postgres (garments/profiles), image storage
+```mermaid
+flowchart LR
+    Browser(["User's browser"])
+
+    subgraph app["Next.js app (Vercel)"]
+        direction TB
+        Pages["Pages / SSR<br/>landing · analyze · closet · outfits · profile"]
+        Proxy["proxy.ts<br/>refresh session · guard routes"]
+        Server["Server Actions<br/>+ /api/analyze"]
+        AI["AIStylist interface<br/>→ GeminiStylist"]
+    end
+
+    Gemini["Google Gemini<br/>vision + text"]
+
+    subgraph sb["Supabase"]
+        direction TB
+        Auth["Auth"]
+        DB[("Postgres + RLS<br/>garments · profiles")]
+        Store["Storage<br/>private images"]
+    end
+
+    Browser -->|every request| Proxy
+    Browser -->|load page| Pages
+    Browser -->|submit form| Server
+    Server --> AI
+    AI -->|images + prompts| Gemini
+    Server -->|scoped by RLS| DB
+    Server --> Store
+    Proxy --> Auth
+    Server --> Auth
 ```
 
-- Styling feedback runs through `/api/analyze`.
-- Wardrobe uploads and outfit suggestions run through server actions.
+- The **server holds all secret keys** — the browser never sees the Gemini key or
+  the Supabase secret key.
+- Styling feedback runs through `/api/analyze`; wardrobe uploads and outfit
+  suggestions run through **Server Actions**.
 - Clothing images live in a **private** Supabase Storage bucket and are shown via
-  short-lived signed URLs.
+  short-lived **signed URLs**.
+
+## Design decisions
+
+- **Provider-agnostic AI layer.** All AI access goes through a single `AIStylist`
+  interface (`src/lib/ai/`). Swapping Gemini for another model means writing one
+  new class — the rest of the app is untouched — and it makes the AI layer easy to
+  unit-test by mocking the client.
+- **Schema-validated output + retry/backoff.** Every model call requests a strict
+  JSON schema and is parsed/validated; transient `429/503` errors retry with
+  exponential backoff, while real errors fail fast. This is covered by tests.
+- **Row-Level Security over app-level checks.** Each user's wardrobe is isolated
+  at the **database** layer (RLS policies scoped to `auth.uid()`), not just in app
+  code — and an integration test proves user A can't read user B's data.
+- **Private images via signed URLs.** Images never live in a public bucket; the
+  server mints short-lived signed URLs only for the owner.
+- **Outfit suggestions from a text catalog.** Instead of re-sending every clothing
+  image, the wardrobe is summarized as a numbered text list; the model references
+  items **by number**, which is cheaper and makes it impossible to hallucinate
+  clothes the user doesn't own.
+- **Observability built in.** Every AI call logs provider, latency, retry count,
+  and validation outcome (pino), so failures and performance are measurable.
 
 ## Getting started
 
