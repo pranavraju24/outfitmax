@@ -1,5 +1,7 @@
 # OutfitMax 👕
 
+![CI](https://github.com/pranavraju24/outfitmax/actions/workflows/ci.yml/badge.svg)
+
 Your AI personal stylist. Upload photos of your clothes to get instant styling
 feedback, build a searchable digital wardrobe, and generate complete outfits
 from pieces you already own — powered by Google Gemini vision.
@@ -19,9 +21,9 @@ from pieces you already own — powered by Google Gemini vision.
   suggestion for anything missing.
 - **Accounts & privacy** — email/password auth; every user only ever sees their
   own clothes (enforced by database Row-Level Security and private image
-  storage).
+  storage). 
 
-## Tech stack
+## Tech stack 
 
 | Layer | Choice |
 | --- | --- |
