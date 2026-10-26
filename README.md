@@ -2,6 +2,8 @@
 
 ![CI](https://github.com/pranavraju24/outfitmax/actions/workflows/ci.yml/badge.svg)
 
+**🔗 [Live demo](https://outfitmax-outfit-max.vercel.app)**
+
 Your AI personal stylist. Upload photos of your clothes to get instant styling
 feedback, build a searchable digital wardrobe, and generate complete outfits
 from pieces you already own — powered by Google Gemini vision.
