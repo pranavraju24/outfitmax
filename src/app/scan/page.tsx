@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth/dal";
-import CameraScanner from "./CameraScanner";
+import ScanModes from "./ScanModes";
 
 export default async function ScanPage() {
   await requireUser();
@@ -10,11 +10,12 @@ export default async function ScanPage() {
         Scan your closet
       </h1>
       <p className="mx-auto mt-3 max-w-xl text-lg text-gray-500">
-        Point your camera at your clothes. OutfitMax detects each item live —
-        review the list and add the ones you want to your wardrobe.
+        Detect your clothes with a live camera, or upload a video and we&apos;ll
+        scan through it — then review the detected items and add them to your
+        wardrobe.
       </p>
 
-      <CameraScanner />
+      <ScanModes />
     </main>
   );
 }

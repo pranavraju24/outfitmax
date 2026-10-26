@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QuickDetection } from "@/lib/ai/types";
 import { saveScannedGarment } from "./actions";
+import DetectedItems, { type ScannedItem } from "./DetectedItems";
 
 // How often Auto-scan grabs a frame (ms). The free Gemini tier allows ~10-15
 // requests/min, so going much faster just causes throttling. A busy-guard also
@@ -14,16 +15,6 @@ const AUTO_INTERVAL_MS = 2500;
 const MAX_DIM = 512;
 const JPEG_QUALITY = 0.55;
 
-interface Detected {
-  id: number;
-  thumbnail: string; // data URL, for preview
-  base64: string; // raw frame, for saving
-  mimeType: string;
-  detection: QuickDetection;
-  status: "pending" | "saving" | "added" | "error";
-  message?: string;
-}
-
 export default function CameraScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,7 +24,7 @@ export default function CameraScanner() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [items, setItems] = useState<Detected[]>([]);
+  const [items, setItems] = useState<ScannedItem[]>([]);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -197,61 +188,7 @@ export default function CameraScanner() {
         </p>
       )}
 
-      {items.length > 0 && (
-        <div className="mt-8 space-y-3">
-          <h2 className="text-left text-lg font-semibold">
-            Detected items ({items.length})
-          </h2>
-          {items.map((d) => (
-            <div
-              key={d.id}
-              className="flex items-center gap-3 rounded-xl border border-[#2b2420]/15 p-3 text-left"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={d.thumbnail}
-                alt={d.detection.name}
-                className="h-16 w-16 shrink-0 rounded-lg object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {d.detection.name}
-                </p>
-                <p className="truncate text-xs text-gray-500">
-                  {[d.detection.category, d.detection.color]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {d.status === "error" && (
-                  <p className="text-xs text-red-600">{d.message}</p>
-                )}
-              </div>
-              <div className="shrink-0">
-                {d.status === "added" ? (
-                  <span className="text-sm text-green-700">Added ✓</span>
-                ) : d.status === "saving" ? (
-                  <span className="text-sm text-gray-500">Saving…</span>
-                ) : (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => addToCloset(d.id)}
-                      className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white"
-                    >
-                      Add
-                    </button>
-                    <button
-                      onClick={() => dismiss(d.id)}
-                      className="rounded-md border border-[#2b2420]/25 px-3 py-1 text-xs"
-                    >
-                      Skip
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DetectedItems items={items} onAdd={addToCloset} onDismiss={dismiss} />
     </div>
   );
 }
