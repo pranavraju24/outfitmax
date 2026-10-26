@@ -23,6 +23,9 @@ export default async function Header() {
               <Link href="/closet" className="hover:underline">
                 My Closet
               </Link>
+              <Link href="/scan" className="hover:underline">
+                Scan
+              </Link>
               <Link href="/outfits" className="hover:underline">
                 Outfit ideas
               </Link>

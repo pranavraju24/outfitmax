@@ -44,7 +44,8 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/closet") ||
     path.startsWith("/wardrobe") ||
     path.startsWith("/outfits") ||
-    path.startsWith("/profile");
+    path.startsWith("/profile") ||
+    path.startsWith("/scan");
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

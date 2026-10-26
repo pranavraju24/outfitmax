@@ -11,7 +11,7 @@ const BUCKET = "garments";
 // person's files are neatly separated.
 export async function uploadGarmentImage(
   userId: string,
-  bytes: ArrayBuffer,
+  bytes: ArrayBuffer | Uint8Array,
   contentType: string
 ): Promise<string> {
   const supabase = createAdminClient();
