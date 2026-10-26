@@ -22,6 +22,14 @@ export default async function OutfitsPage() {
         Assembled from the {itemCount} item{itemCount === 1 ? "" : "s"} in your
         closet.
       </p>
+      <p className="mt-2">
+        <Link
+          href="/outfits/saved"
+          className="text-sm text-[#E86A45] hover:underline"
+        >
+          View saved outfits →
+        </Link>
+      </p>
 
       <div className="mx-auto mt-8 max-w-xl">
         {itemCount < 2 ? (

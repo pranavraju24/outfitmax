@@ -218,7 +218,7 @@ supabase/schema.sql         # Database schema + RLS policies
 - [x] Scan your closet with a live camera or an uploaded video
 - [x] Deploy to production
 - [x] Closet search / filter / edit
-- [ ] Save favorite outfits
+- [x] Save favorite outfits
 - [ ] Multi-garment parsing (one photo → many items)
 
 ## Notes

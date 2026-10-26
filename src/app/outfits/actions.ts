@@ -1,7 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSignedUrl } from "@/lib/wardrobe/storage";
 import { getStylist } from "@/lib/ai";
 import { buildShopLinks } from "@/lib/ai/shop";
@@ -99,4 +101,43 @@ export async function suggestOutfits(
 
   // Drop any outfit that somehow ended up empty.
   return { outfits: outfits.filter((o) => o.pieces.length > 0) };
+}
+
+export type SaveOutfitResult = { ok?: boolean; error?: string };
+
+// Persist a suggested outfit (its title, rationale, and the ids of its pieces).
+export async function saveOutfit(input: {
+  title: string;
+  rationale: string;
+  garmentIds: string[];
+}): Promise<SaveOutfitResult> {
+  const user = await requireUser();
+  if (!input.garmentIds?.length) return { error: "This outfit has no items." };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("saved_outfits").insert({
+    user_id: user.id,
+    title: input.title,
+    rationale: input.rationale,
+    garment_ids: input.garmentIds,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/outfits/saved");
+  return { ok: true };
+}
+
+export async function deleteSavedOutfit(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = createAdminClient();
+  await supabase
+    .from("saved_outfits")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  revalidatePath("/outfits/saved");
 }

@@ -1,13 +1,33 @@
 "use client";
 
-import { useActionState } from "react";
-import { suggestOutfits, type SuggestState } from "./actions";
+import { useActionState, useState } from "react";
+import {
+  suggestOutfits,
+  saveOutfit,
+  type SuggestState,
+  type ResolvedOutfit,
+} from "./actions";
 
 export default function OutfitSuggester() {
   const [state, action, pending] = useActionState<SuggestState, FormData>(
     suggestOutfits,
     undefined
   );
+
+  // Per-outfit save status (keyed by its index in the results list).
+  const [savedState, setSavedState] = useState<
+    Record<number, "idle" | "saving" | "saved" | "error">
+  >({});
+
+  async function handleSave(i: number, o: ResolvedOutfit) {
+    setSavedState((s) => ({ ...s, [i]: "saving" }));
+    const res = await saveOutfit({
+      title: o.title,
+      rationale: o.rationale,
+      garmentIds: o.pieces.map((p) => p.id),
+    });
+    setSavedState((s) => ({ ...s, [i]: res.ok ? "saved" : "error" }));
+  }
 
   return (
     <div>
@@ -38,7 +58,25 @@ export default function OutfitSuggester() {
         <div className="mt-6 space-y-6 text-left">
           {state.outfits.map((o, i) => (
             <div key={i} className="rounded-xl border border-[#2b2420]/15 p-5">
-              <h3 className="font-semibold">{o.title}</h3>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-semibold">{o.title}</h3>
+                {savedState[i] === "saved" ? (
+                  <span className="shrink-0 text-xs text-green-700">Saved ✓</span>
+                ) : (
+                  <button
+                    onClick={() => handleSave(i, o)}
+                    disabled={savedState[i] === "saving"}
+                    className="shrink-0 rounded-full border border-[#E86A45] px-3 py-1 text-xs font-medium text-[#E86A45] hover:bg-[#E86A45]/10 disabled:opacity-50"
+                  >
+                    {savedState[i] === "saving" ? "Saving…" : "♥ Save outfit"}
+                  </button>
+                )}
+              </div>
+              {savedState[i] === "error" && (
+                <p className="mt-1 text-xs text-red-600">
+                  Couldn&apos;t save. Try again.
+                </p>
+              )}
 
               <div className="mt-3 flex flex-wrap gap-3">
                 {o.pieces.map((p) => (
