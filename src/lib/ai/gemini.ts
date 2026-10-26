@@ -133,6 +133,43 @@ const DETECT_SCHEMA = {
   required: ["present", "name", "category", "color"],
 };
 
+// --- Multi-garment parsing (one photo → many items) --------------------------
+
+const PARSE_PROMPT = `You are a fashion cataloguer. The photo may contain MULTIPLE clothing items
+(e.g. a flat-lay, a pile, or several garments laid out). Identify EACH distinct
+clothing item and return ONE entry per item.
+- "category" MUST be exactly one of: top, bottom, shoes, outerwear, accessory, other.
+- "name" is a short label, e.g. "black cotton hoodie".
+- Do not merge different items into one entry, and do not invent items that
+  aren't clearly visible. If there is only one item, return a single entry.`;
+
+const PARSE_SCHEMA = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING },
+      category: { type: Type.STRING },
+      color: { type: Type.STRING },
+      pattern: { type: Type.STRING },
+      material: { type: Type.STRING },
+      season: { type: Type.STRING },
+      description: { type: Type.STRING },
+      tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+    },
+    required: [
+      "name",
+      "category",
+      "color",
+      "pattern",
+      "material",
+      "season",
+      "description",
+      "tags",
+    ],
+  },
+};
+
 // --- Outfit suggestions from the user's wardrobe -----------------------------
 
 const OUTFITS_PROMPT = `You are OutfitMax, a personal stylist. You are given a numbered list of clothing
@@ -384,6 +421,28 @@ export class GeminiStylist implements AIStylist {
       category: raw.category ?? "",
       color: raw.color ?? "",
     };
+  }
+
+  async parseGarments(image: ImageInput): Promise<GarmentTags[]> {
+    const raw = (await this.runJson("parseGarments", {
+      model: MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: "Catalogue every clothing item in this photo:" },
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
+          ],
+        },
+      ],
+      config: {
+        systemInstruction: PARSE_PROMPT,
+        responseMimeType: "application/json",
+        responseSchema: PARSE_SCHEMA,
+      },
+    })) as GarmentTags[];
+
+    return (raw ?? []).map((g) => ({ ...g, tags: g.tags ?? [] }));
   }
 
   async suggestOutfits(input: SuggestOutfitsInput): Promise<OutfitIdea[]> {

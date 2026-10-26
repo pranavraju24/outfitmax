@@ -1,14 +1,16 @@
 "use client";
 
-import type { QuickDetection } from "@/lib/ai/types";
+import type { GarmentTags, QuickDetection } from "@/lib/ai/types";
 
-// One detected garment, shared by the live-camera and video-upload scanners.
+// One detected garment, shared by the camera, video, and photo scanners.
 export interface ScannedItem {
   id: number;
   thumbnail: string; // data URL preview
   base64: string; // raw frame, for saving
   mimeType: string;
   detection: QuickDetection;
+  // Full tags, set only by the multi-photo parser (which already has them).
+  tags?: GarmentTags;
   status: "pending" | "saving" | "added" | "error";
   message?: string;
 }

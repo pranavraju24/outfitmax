@@ -183,3 +183,18 @@ describe("GeminiStylist.detectGarment (live scan)", () => {
     expect(generateContentMock).toHaveBeenCalledTimes(1); // maxAttempts = 1
   });
 });
+
+describe("GeminiStylist.parseGarments (multi-item photo)", () => {
+  it("returns one entry per item and defaults missing tags", async () => {
+    geminiReturns([
+      { name: "white tee", category: "top", color: "white", pattern: "solid", material: "cotton", season: "all-season", description: "x" },
+      { name: "blue jeans", category: "bottom", color: "blue", pattern: "solid", material: "denim", season: "all-season", description: "y", tags: ["casual"] },
+    ]);
+    const stylist = new GeminiStylist("test-key");
+
+    const items = await stylist.parseGarments(IMG);
+    expect(items).toHaveLength(2);
+    expect(items[0].tags).toEqual([]); // defaulted
+    expect(items[1].name).toBe("blue jeans");
+  });
+});

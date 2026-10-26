@@ -219,7 +219,7 @@ supabase/schema.sql         # Database schema + RLS policies
 - [x] Deploy to production
 - [x] Closet search / filter / edit
 - [x] Save favorite outfits
-- [ ] Multi-garment parsing (one photo → many items)
+- [x] Multi-garment parsing (one photo → many items)
 
 ## Notes
 

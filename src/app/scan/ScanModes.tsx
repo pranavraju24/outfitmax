@@ -3,9 +3,12 @@
 import { useState } from "react";
 import CameraScanner from "./CameraScanner";
 import VideoScanner from "./VideoScanner";
+import PhotoScanner from "./PhotoScanner";
+
+type Mode = "camera" | "video" | "photo";
 
 export default function ScanModes() {
-  const [mode, setMode] = useState<"camera" | "video">("camera");
+  const [mode, setMode] = useState<Mode>("camera");
 
   const tab = (active: boolean) =>
     `rounded-full px-5 py-2 text-sm font-semibold transition ${
@@ -14,17 +17,22 @@ export default function ScanModes() {
 
   return (
     <div>
-      <div className="mt-6 inline-flex rounded-full border border-[#2b2420]/15 p-1">
+      <div className="mt-6 inline-flex flex-wrap justify-center gap-1 rounded-full border border-[#2b2420]/15 p-1">
         <button onClick={() => setMode("camera")} className={tab(mode === "camera")}>
           Live camera
         </button>
         <button onClick={() => setMode("video")} className={tab(mode === "video")}>
           Upload video
         </button>
+        <button onClick={() => setMode("photo")} className={tab(mode === "photo")}>
+          Upload photo
+        </button>
       </div>
 
-      {/* Switching modes unmounts the other (e.g. stops the live camera). */}
-      {mode === "camera" ? <CameraScanner /> : <VideoScanner />}
+      {/* Switching modes unmounts the others (e.g. stops the live camera). */}
+      {mode === "camera" && <CameraScanner />}
+      {mode === "video" && <VideoScanner />}
+      {mode === "photo" && <PhotoScanner />}
     </div>
   );
 }

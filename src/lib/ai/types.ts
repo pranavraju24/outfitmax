@@ -125,6 +125,8 @@ export interface AIStylist {
   analyzeOutfit(input: AnalyzeInput): Promise<OutfitFeedback>;
   /** Look at ONE clothing photo and describe/categorize it for the wardrobe. */
   tagGarment(image: ImageInput): Promise<GarmentTags>;
+  /** Parse a photo that may contain MANY garments into one entry per item. */
+  parseGarments(image: ImageInput): Promise<GarmentTags[]>;
   /** Assemble outfits from the user's existing wardrobe (text catalog). */
   suggestOutfits(input: SuggestOutfitsInput): Promise<OutfitIdea[]>;
   /** Fast, lightweight single-frame detection for the live camera scanner. */
