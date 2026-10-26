@@ -1,15 +1,24 @@
 import type { NextConfig } from "next";
 
+// Vercel builds and bundles Next.js its own way, and the "standalone" output +
+// a custom file-tracing root conflict with Vercel's post-build step. So we only
+// enable those for Docker / self-hosting (i.e. when NOT running on Vercel).
+const isVercel = !!process.env.VERCEL;
+
 const nextConfig: NextConfig = {
-  // Emit a self-contained ".next/standalone" build (minimal server + only the
-  // node_modules actually used) for a small Docker image.
-  output: "standalone",
-  // Pin the project root so Turbopack (dev) and the file tracer (build) don't
-  // walk up to a stray lockfile in a parent folder (e.g. ~/package-lock.json).
+  // Self-contained ".next/standalone" build for a small Docker image.
+  ...(isVercel
+    ? {}
+    : {
+        output: "standalone",
+        // Pin the file tracer so it doesn't walk up to a stray lockfile in a
+        // parent folder (e.g. ~/package-lock.json).
+        outputFileTracingRoot: process.cwd(),
+      }),
+  // Pin the Turbopack (dev) root for the same reason. Harmless on Vercel.
   turbopack: {
     root: process.cwd(),
   },
-  outputFileTracingRoot: process.cwd(),
   experimental: {
     serverActions: {
       // Allow uploading several clothing photos in one submission. The default
