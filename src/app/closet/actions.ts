@@ -10,6 +10,30 @@ export type AddGarmentState =
   | { error?: string; success?: boolean; added?: number; note?: string }
   | undefined;
 
+// Edit a garment's details (fix a mis-tag, rename, retag). Scoped to the owner.
+export async function updateGarment(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const name = String(formData.get("name") ?? "").trim() || null;
+  const category = String(formData.get("category") ?? "").trim() || null;
+  const color = String(formData.get("color") ?? "").trim() || null;
+  const tags = String(formData.get("tags") ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const supabase = createAdminClient();
+  await supabase
+    .from("garments")
+    .update({ name, category, color, tags })
+    .eq("id", id)
+    .eq("user_id", user.id); // never let one user edit another's row
+
+  revalidatePath("/closet");
+}
+
 // Processes ONE file into a garment: tag → store → insert. Returns an error
 // message string on failure, or null on success.
 async function addOneGarment(

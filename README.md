@@ -215,10 +215,11 @@ supabase/schema.sql         # Database schema + RLS policies
 - [x] Accounts + digital wardrobe with AI auto-tagging
 - [x] Multi-photo upload
 - [x] Outfit suggestions from owned items
-- [ ] Closet search / filter / edit
+- [x] Scan your closet with a live camera or an uploaded video
+- [x] Deploy to production
+- [x] Closet search / filter / edit
 - [ ] Save favorite outfits
 - [ ] Multi-garment parsing (one photo → many items)
-- [ ] Deploy to production
 
 ## Notes
 
