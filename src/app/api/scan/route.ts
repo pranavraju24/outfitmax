@@ -27,8 +27,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const tags = await getStylist().tagGarment({ data: image, mimeType });
-    return NextResponse.json({ tags });
+    const detection = await getStylist().detectGarment({ data: image, mimeType });
+    return NextResponse.json({ detection });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Detection failed.";
     return NextResponse.json({ error: message }, { status: 500 });

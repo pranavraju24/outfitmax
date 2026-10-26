@@ -106,6 +106,15 @@ export interface SuggestOutfitsInput {
   occasion?: string;
 }
 
+/** A fast, minimal read of one camera frame during live scanning. */
+export interface QuickDetection {
+  /** Is a clothing item clearly visible in the frame? */
+  present: boolean;
+  name: string;
+  category: string;
+  color: string;
+}
+
 /**
  * THE CONTRACT. Any AI provider we use (Gemini today, maybe Claude later) must
  * provide a class with these methods. The app only ever talks to this
@@ -118,4 +127,6 @@ export interface AIStylist {
   tagGarment(image: ImageInput): Promise<GarmentTags>;
   /** Assemble outfits from the user's existing wardrobe (text catalog). */
   suggestOutfits(input: SuggestOutfitsInput): Promise<OutfitIdea[]>;
+  /** Fast, lightweight single-frame detection for the live camera scanner. */
+  detectGarment(image: ImageInput): Promise<QuickDetection>;
 }

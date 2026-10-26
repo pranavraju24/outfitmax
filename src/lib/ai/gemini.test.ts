@@ -163,3 +163,23 @@ describe("GeminiStylist.suggestOutfits", () => {
     expect(result[0].missingPiece).toBeNull();
   });
 });
+
+describe("GeminiStylist.detectGarment (live scan)", () => {
+  it("parses a quick detection", async () => {
+    geminiReturns({ present: true, name: "red hoodie", category: "top", color: "red" });
+    const stylist = new GeminiStylist("test-key");
+
+    const d = await stylist.detectGarment(IMG);
+    expect(d.present).toBe(true);
+    expect(d.name).toBe("red hoodie");
+    expect(d.category).toBe("top");
+  });
+
+  it("does NOT retry during scanning — fails fast on a transient error", async () => {
+    generateContentMock.mockRejectedValue(new Error("503 overloaded"));
+    const stylist = new GeminiStylist("test-key");
+
+    await expect(stylist.detectGarment(IMG)).rejects.toThrow();
+    expect(generateContentMock).toHaveBeenCalledTimes(1); // maxAttempts = 1
+  });
+});

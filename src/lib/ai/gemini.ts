@@ -14,6 +14,7 @@ import type {
   ImageInput,
   OutfitFeedback,
   OutfitIdea,
+  QuickDetection,
   SuggestOutfitsInput,
 } from "./types";
 import { buildShopLinks } from "./shop";
@@ -113,6 +114,25 @@ const TAG_SCHEMA = {
   ],
 };
 
+// --- Fast single-frame detection (live camera scan) --------------------------
+
+const DETECT_PROMPT = `You are a fast clothing detector for a live camera scan. Identify the single
+most prominent clothing item in the frame.
+- "present" is true ONLY if a clothing item is clearly visible; otherwise false.
+- "category" MUST be one of: top, bottom, shoes, outerwear, accessory, other.
+- Keep "name" short, e.g. "blue denim jacket". Respond quickly and concisely.`;
+
+const DETECT_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    present: { type: Type.BOOLEAN },
+    name: { type: Type.STRING },
+    category: { type: Type.STRING },
+    color: { type: Type.STRING },
+  },
+  required: ["present", "name", "category", "color"],
+};
+
 // --- Outfit suggestions from the user's wardrobe -----------------------------
 
 const OUTFITS_PROMPT = `You are OutfitMax, a personal stylist. You are given a numbered list of clothing
@@ -210,12 +230,13 @@ export class GeminiStylist implements AIStylist {
   // This is our observability hook — the numbers here power dashboards/metrics.
   private async runJson(
     operation: string,
-    request: Parameters<GoogleGenAI["models"]["generateContent"]>[0]
+    request: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
+    maxAttempts = 3
   ): Promise<unknown> {
     const startedAt = Date.now();
     let attempts = 0;
     try {
-      const result = await this.generateWithRetry(request);
+      const result = await this.generateWithRetry(request, maxAttempts);
       attempts = result.attempts;
 
       const text = result.response.text;
@@ -329,6 +350,40 @@ export class GeminiStylist implements AIStylist {
 
     // Make sure tags is always an array, even if the model omitted it.
     return { ...raw, tags: raw.tags ?? [] };
+  }
+
+  async detectGarment(image: ImageInput): Promise<QuickDetection> {
+    // Live scanning: tiny schema + maxAttempts=1 (no backoff) so a throttled or
+    // blurry frame is skipped instantly and the next frame tries again. The model
+    // can be overridden with SCAN_MODEL (e.g. a faster flash-lite variant).
+    const raw = (await this.runJson(
+      "detectGarment",
+      {
+        model: process.env.SCAN_MODEL || MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: "Identify the clothing item in this camera frame:" },
+              { inlineData: { mimeType: image.mimeType, data: image.data } },
+            ],
+          },
+        ],
+        config: {
+          systemInstruction: DETECT_PROMPT,
+          responseMimeType: "application/json",
+          responseSchema: DETECT_SCHEMA,
+        },
+      },
+      1
+    )) as QuickDetection;
+
+    return {
+      present: !!raw.present,
+      name: raw.name ?? "",
+      category: raw.category ?? "",
+      color: raw.color ?? "",
+    };
   }
 
   async suggestOutfits(input: SuggestOutfitsInput): Promise<OutfitIdea[]> {
